@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLUST Shuttle Fleet Management</title>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f4f6f9;
+    color: #333;
+}
+
+header {
+    background: linear-gradient(135deg, #0d6efd, #0a58ca);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+
+header h1 { font-size: 24px; }
+header p  { font-size: 13px; opacity: .85; margin-top: 4px; }
+
+/* ---------- NAVBAR (matches your image) ---------- */
+nav {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px;
+    background: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,.08);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+nav button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 22px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    background: #e9ecef;
+    color: #212529;
+    font-weight: 700;
+    font-size: 15px;
+    font-family: inherit;
+    transition: all .2s;
+}
+
+nav button:hover {
+    background: #dee2e6;
+}
+
+nav button.active {
+    background: #0d6efd;
+    color: white;
+    box-shadow: 0 3px 10px rgba(13,110,253,.4);
+}
+
+nav button .icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+/* ---------- SCREENS ---------- */
+.screen { display: none; padding: 20px; max-width: 1100px; margin: 0 auto; }
+.screen.active { display: block; animation: fade .3s ease; }
+
+@keyframes fade {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+    background: white;
+    padding: 22px;
+    margin: 15px 0;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+}
+
+.card h2 {
+    color: #0d6efd;
+    margin-bottom: 15px;
+    font-size: 20px;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 10px;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+}
+
+.stat-box {
+    background: linear-gradient(135deg, #0d6efd, #0a58ca);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.stat-box.warn { background: linear-gradient(135deg, #fd7e14, #e8590c); }
+.stat-box.ok   { background: linear-gradient(135deg, #198754, #146c43); }
+
+.stat-box h3 { font-size: 32px; margin-bottom: 5px; }
+.stat-box p  { font-size: 13px; opacity: .9; }
+
+table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e9ecef; }
+th { background: #0d6efd; color: white; font-weight: 600; }
+tr:hover { background: #f8f9fa; }
+
+.status { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; color: white; display: inline-block; }
+.status.active-s { background: #198754; }
+.status.maint    { background: #fd7e14; }
+.status.off      { background: #6c757d; }
+
+form { display: grid; gap: 12px; max-width: 420px; }
+input, select {
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+}
+input:focus, select:focus {
+    outline: none;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13,110,253,.15);
+}
+
+.btn-primary {
+    padding: 11px 20px;
+    background: #0d6efd;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+}
+.btn-primary:hover { background: #0a58ca; }
+
+.btn-danger {
+    padding: 6px 12px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.btn-danger:hover { background: #bb2d3b; }
+
+.route-list { list-style: none; }
+.route-list li {
+    padding: 14px;
+    border-left: 4px solid #0d6efd;
+    background: #f8f9fa;
+    margin-bottom: 10px;
+    border-radius: 6px;
+}
+
+.empty { color: #888; font-style: italic; padding: 15px 0; }
+
+@media (max-width: 600px) {
+    header h1 { font-size: 18px; }
+    nav button { padding: 9px 14px; font-size: 13px; }
+    nav button .icon { font-size: 15px; }
+    th, td { padding: 8px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+    <h1>🚐 KLUST Shuttle Fleet Management</h1>
+    <p>Kelab Lestari Universiti Shuttle Transport System</p>
+</header>
+
+<!-- ================= NAVBAR (matches your screenshot) ================= -->
+<nav>
+    <button class="active" onclick="showScreen('dashboard', this)">
+        <span class="icon">📊</span> Dashboard
+    </button>
+    <button onclick="showScreen('fleet', this)">
+        <span class="icon">🚐</span> Fleet
+    </button>
+    <button onclick="showScreen('drivers', this)">
+        <span class="icon">👤</span> Drivers
+    </button>
+    <button onclick="showScreen('routes', this)">
+        <span class="icon">🗺️</span> Routes
+    </button>
+    <button onclick="showScreen('maintenance', this)">
+        <span class="icon">🔧</span> Maintenance
+    </button>
+</nav>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="dashboard" class="screen active">
+    <div class="card">
+        <h2>Dashboard Overview</h2>
+        <div class="stats" id="statsBox"></div>
+    </div>
+    <div class="card">
+        <h2>Recent Activity</h2>
+        <ul class="route-list">
+            <li>✅ Shuttle KL-001 completed Route A at 08:45 AM</li>
+            <li>🔧 Shuttle KL-003 sent for brake maintenance</li>
+            <li>👤 New driver "Hafiz" registered</li>
+            <li>🚐 Shuttle KL-005 started Route B at 09:15 AM</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ============ FLEET ============ -->
+<div id="fleet" class="screen">
+    <div class="card">
+        <h2>Add New Vehicle</h2>
+        <form onsubmit="addVehicle(event)">
+            <input type="text" id="vId" placeholder="Vehicle ID (e.g. KL-005)" required>
+            <input type="text" id="vModel" placeholder="Model (e.g. Toyota Hiace)" required>
+            <input type="text" id="vDriver" placeholder="Assigned Driver">
+            <select id="vStatus">
+                <option value="Active">Active</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Off Duty">Off Duty</option>
+            </select>
+            <button type="submit" class="btn-primary">➕ Add Vehicle</button>
+        </form>
+    </div>
+    <div class="card">
+        <h2>Fleet Status</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Vehicle ID</th>
+                    <th>Model</th>
+                    <th>Driver</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="fleetTable"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ============ DRIVERS ============ -->
+<div id="drivers" class="screen">
+    <div class="card">
+        <h2>Add New Driver</h2>
+        <form onsubmit="addDriver(event)">
+            <input type="text" id="dName" placeholder="Full Name" required>
+            <input type="text" id="dLicense" placeholder="License Number" required>
+            <input type="text" id="dVehicle" placeholder="Assigned Vehicle (e.g. KL-001)">
+            <button type="submit" class="btn-primary">➕ Add Driver</button>
+        </form>
+    </div>
+    <div class="card">
+        <h2>Driver Directory</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>License</th>
+                    <th>Assigned Vehicle</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="driverTable"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ============ ROUTES ============ -->
+<div id="routes" class="screen">
+    <div class="card">
+        <h2>Shuttle Routes</h2>
+        <ul class="route-list">
+            <li><strong>Route A:</strong> KLUST Main Campus → Hostel Block → Library</li>
+            <li><strong>Route B:</strong> KLUST Main Campus → City Center → Train Station</li>
+            <li><strong>Route C:</strong> Hostel Block → Sports Complex → Cafeteria</li>
+            <li><strong>Route D:</strong> Main Campus → Medical Center → Residential Area</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ============ MAINTENANCE ============ -->
+<div id="maintenance" class="screen">
+    <div class="card">
+        <h2>Log Maintenance</h2>
+        <form onsubmit="addMaintenance(event)">
+            <input type="text" id="mVehicle" placeholder="Vehicle ID (e.g. KL-003)" required>
+            <input type="text" id="mIssue" placeholder="Issue Description" required>
+            <select id="mStatus">
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+            </select>
+            <button type="submit" class="btn-primary">➕ Log Entry</button>
+        </form>
+    </div>
+    <div class="card">
+        <h2>Maintenance Log</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Vehicle</th>
+                    <th>Issue</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="maintTable"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+/* ---------- DATA ---------- */
+let fleet = JSON.parse(localStorage.getItem('klust_fleet')) || [
+    { id: 'KL-001', model: 'Toyota Hiace', driver: 'Ahmad', status: 'Active' },
+    { id: 'KL-002', model: 'Nissan Urvan', driver: 'Siti', status: 'Active' },
+    { id: 'KL-003', model: 'Ford Transit', driver: '—', status: 'Maintenance' },
+    { id: 'KL-004', model: 'Hyundai Starex', driver: 'Raj', status: 'Active' }
+];
+
+let drivers = JSON.parse(localStorage.getItem('klust_drivers')) || [
+    { name: 'Ahmad', license: 'D1234567', vehicle: 'KL-001' },
+    { name: 'Siti', license: 'D7654321', vehicle: 'KL-002' },
+    { name: 'Raj', license: 'D5558888', vehicle: 'KL-004' }
+];
+
+let maintenance = JSON.parse(localStorage.getItem('klust_maint')) || [
+    { vehicle: 'KL-003', issue: 'Brake replacement', status: 'In Progress' },
+    { vehicle: 'KL-007', issue: 'Oil change', status: 'Completed' }
+];
+
+function save() {
+    localStorage.setItem('klust_fleet', JSON.stringify(fleet));
+    localStorage.setItem('klust_drivers', JSON.stringify(drivers));
+    localStorage.setItem('klust_maint', JSON.stringify(maintenance));
+}
+
+/* ---------- NAVIGATION ---------- */
+function showScreen(id, btn) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    if (id === 'dashboard') renderDashboard();
+}
+
+/* ---------- RENDER ---------- */
+function statusBadge(status) {
+    let cls = status === 'Active' ? 'active-s' :
+              status === 'Maintenance' ? 'maint' : 'off';
+    return `<span class="status ${cls}">${status}</span>`;
+}
+
+function renderDashboard() {
+    const total = fleet.length;
+    const active = fleet.filter(v => v.status === 'Active').length;
+    const maint = fleet.filter(v => v.status === 'Maintenance').length;
+    const onDuty = drivers.length;
+
+    document.getElementById('statsBox').innerHTML = `
+        <div class="stat-box"><h3>${total}</h3><p>Total Vehicles</p></div>
+        <div class="stat-box ok"><h3>${active}</h3><p>Active Vehicles</p></div>
+        <div class="stat-box warn"><h3>${maint}</h3><p>Under Maintenance</p></div>
+        <div class="stat-box"><h3>${onDuty}</h3><p>Drivers on Duty</p></div>
+    `;
+}
+
+function renderFleet() {
+    const tbody = document.getElementById('fleetTable');
+    tbody.innerHTML = fleet.length === 0
+        ? `<tr><td colspan="5" class="empty">No vehicles registered.</td></tr>`
+        : fleet.map((v, i) => `
+            <tr>
+                <td><strong>${v.id}</strong></td>
+                <td>${v.model}</td>
+                <td>${v.driver || '—'}</td>
+                <td>${statusBadge(v.status)}</td>
+                <td><button class="btn-danger" onclick="deleteVehicle(${i})">Delete</button></td>
+            </tr>
+        `).join('');
+}
+
+function renderDrivers() {
+    const tbody = document.getElementById('driverTable');
+    tbody.innerHTML = drivers.length === 0
+        ? `<tr><td colspan="4" class="empty">No drivers registered.</td></tr>`
+        : drivers.map((d, i) => `
+            <tr>
+                <td><strong>${d.name}</strong></td>
+                <td>${d.license}</td>
+                <td>${d.vehicle || '—'}</td>
+                <td><button class="btn-danger" onclick="deleteDriver(${i})">Delete</button></td>
+            </tr>
+        `).join('');
+}
+
+function renderMaintenance() {
+    const tbody = document.getElementById('maintTable');
+    tbody.innerHTML = maintenance.length === 0
+        ? `<tr><td colspan="4" class="empty">No maintenance records.</td></tr>`
+        : maintenance.map((m, i) => `
+            <tr>
+                <td><strong>${m.vehicle}</strong></td>
+                <td>${m.issue}</td>
+                <td><span class="status ${m.status === 'Completed' ? 'active-s' : 'maint'}">${m.status}</span></td>
+                <td><button class="btn-danger" onclick="deleteMaintenance(${i})">Delete</button></td>
+            </tr>
+        `).join('');
+}
+
+/* ---------- ACTIONS ---------- */
+function addVehicle(e) {
+    e.preventDefault();
+    fleet.push({
+        id: document.getElementById('vId').value.trim(),
+        model: document.getElementById('vModel').value.trim(),
+        driver: document.getElementById('vDriver').value.trim() || '—',
+        status: document.getElementById('vStatus').value
+    });
+    save(); renderFleet(); renderDashboard();
+    e.target.reset();
+    alert('✅ Vehicle added!');
+}
+
+function deleteVehicle(i) {
+    if (confirm('Delete this vehicle?')) {
+        fleet.splice(i, 1);
+        save(); renderFleet(); renderDashboard();
+    }
+}
+
+function addDriver(e) {
+    e.preventDefault();
+    drivers.push({
+        name: document.getElementById('dName').value.trim(),
+        license: document.getElementById('dLicense').value.trim(),
+        vehicle: document.getElementById('dVehicle').value.trim() || '—'
+    });
+    save(); renderDrivers(); renderDashboard();
+    e.target.reset();
+    alert('✅ Driver added!');
+}
+
+function deleteDriver(i) {
+    if (confirm('Delete this driver?')) {
+        drivers.splice(i, 1);
+        save(); renderDrivers(); renderDashboard();
+    }
+}
+
+function addMaintenance(e) {
+    e.preventDefault();
+    maintenance.push({
+        vehicle: document.getElementById('mVehicle').value.trim(),
+        issue: document.getElementById('mIssue').value.trim(),
+        status: document.getElementById('mStatus').value
+    });
+    save(); renderMaintenance();
+    e.target.reset();
+    alert('✅ Maintenance logged!');
+}
+
+function deleteMaintenance(i) {
+    if (confirm('Delete this record?')) {
+        maintenance.splice(i, 1);
+        save(); renderMaintenance();
+    }
+}
+
+/* ---------- INIT ---------- */
+renderDashboard();
+renderFleet();
+renderDrivers();
+renderMaintenance();
+</script>
+
+</body>
+</html>
